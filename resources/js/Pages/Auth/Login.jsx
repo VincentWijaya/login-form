@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from '@/Components/Button';
 import Checkbox from '@/Components/Checkbox';
 import Guest from '@/Layouts/Guest';
@@ -6,7 +6,7 @@ import Input from '@/Components/Input';
 import Label from '@/Components/Label';
 import ValidationErrors from '@/Components/ValidationErrors';
 import { Head, Link, useForm } from '@inertiajs/inertia-react';
-import { loadCaptchaEnginge, LoadCanvasTemplate, LoadCanvasTemplateNoReload, validateCaptcha } from 'react-simple-captcha';
+import { loadCaptchaEnginge, LoadCanvasTemplate, validateCaptcha } from 'react-simple-captcha';
 
 export default function Login({ status, canResetPassword }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -16,7 +16,14 @@ export default function Login({ status, canResetPassword }) {
         captcha: '',
     });
 
+    const [blockCounter, setBlockCounter] = useState(0)
+    const [blockUntill, setBlock] = useState()
+
     useEffect(() => {
+        const now = new Date()
+        const blockTill = localStorage.getItem("blockUntill")
+        blockTill >= now ? setBlock(Number(blockTill)) : ''
+
         loadCaptchaEnginge(6);
         return () => {
             reset('password');
@@ -28,13 +35,30 @@ export default function Login({ status, canResetPassword }) {
     };
 
     const submit = (e) => {
-        e.preventDefault();
+      e.preventDefault();
 
-        if (validateCaptcha(data.captcha)==true) {
-          post(route('login'));
-        } else {
-          alert('Captcha Does Not Match');
-        }
+      if (blockCounter == 2) {
+        let now = new Date()
+        const blockTill = now.setSeconds(now.getSeconds() + 30)
+        localStorage.setItem("blockUntill", blockTill)
+        setBlock(blockTill)
+        setBlockCounter(0)
+      }
+
+      const now = new Date()
+      now >= blockUntill ? setBlock(null) : ''
+
+      if (validateCaptcha(data.captcha)==true) {
+        post(route('login'));
+
+        setTimeout(() => {
+          if (errors) {
+            setBlockCounter(blockCounter + 1)
+          }
+        }, 500);
+      } else {
+        alert('Captcha Does Not Match')
+      }
     };
 
     return (
@@ -43,7 +67,7 @@ export default function Login({ status, canResetPassword }) {
 
             {status && <div className="mb-4 font-medium text-sm text-green-600">{status}</div>}
 
-            <ValidationErrors errors={errors} />
+            <ValidationErrors errors={blockUntill ? {blocked: `Please wait untill ${new Date(blockUntill)} to login`} : errors} />
 
             <form onSubmit={submit}>
                 <div>
