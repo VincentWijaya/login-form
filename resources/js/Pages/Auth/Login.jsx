@@ -6,15 +6,18 @@ import Input from '@/Components/Input';
 import Label from '@/Components/Label';
 import ValidationErrors from '@/Components/ValidationErrors';
 import { Head, Link, useForm } from '@inertiajs/inertia-react';
+import { loadCaptchaEnginge, LoadCanvasTemplate, LoadCanvasTemplateNoReload, validateCaptcha } from 'react-simple-captcha';
 
 export default function Login({ status, canResetPassword }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
         remember: '',
+        captcha: '',
     });
 
     useEffect(() => {
+        loadCaptchaEnginge(6);
         return () => {
             reset('password');
         };
@@ -27,7 +30,11 @@ export default function Login({ status, canResetPassword }) {
     const submit = (e) => {
         e.preventDefault();
 
-        post(route('login'));
+        if (validateCaptcha(data.captcha)==true) {
+          post(route('login'));
+        } else {
+          alert('Captcha Does Not Match');
+        }
     };
 
     return (
@@ -64,6 +71,18 @@ export default function Login({ status, canResetPassword }) {
                         autoComplete="current-password"
                         handleChange={onHandleChange}
                     />
+                </div>
+
+                <div className="mt-4">
+                  <LoadCanvasTemplate />
+                  <Input
+                      type="text"
+                      name="captcha"
+                      value={data.captcha}
+                      className="mt-1 block w-full"
+                      isFocused={true}
+                      handleChange={onHandleChange}
+                  />
                 </div>
 
                 <div className="block mt-4">
